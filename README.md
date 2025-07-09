@@ -29,55 +29,77 @@ The application follows Clean Architecture principles with clear separation of c
 
 ```mermaid
 graph TB
-    Client[Client Applications]
+    subgraph "Client Layer"
+        CURL[cURL / Postman<br/>API Testing Tools]
+        WEB[Web Applications<br/>Frontend Clients]
+        MOBILE[Mobile Apps<br/>React Native / Flutter]
+    end
 
     subgraph "Presentation Layer"
-        Routes[Route Handlers]
-        Middleware[HTTP Middleware]
+        ROUTES[Route Handlers<br/>UserRoutes + GroupRoutes + MessageRoutes]
+        MIDDLEWARE[HTTP Middleware<br/>CORS + JSON + Authentication]
+        VALIDATOR[Input Validator<br/>XSS Protection + Sanitization]
     end
 
     subgraph "Application Layer"
-        UserService[User Service]
-        GroupService[Group Service]
-        MessageService[Message Service]
+        USER_SVC[User Service<br/>Authentication + User Management]
+        GROUP_SVC[Group Service<br/>Group Creation + Membership]
+        MSG_SVC[Message Service<br/>Messaging + Validation]
     end
 
     subgraph "Domain Layer"
-        UserEntity[User Entity]
-        GroupEntity[Group Entity]
-        MessageEntity[Message Entity]
+        USER_ENT[User Entity<br/>ID + Username + Token]
+        GROUP_ENT[Group Entity<br/>ID + Name + Description]
+        MSG_ENT[Message Entity<br/>ID + Content + Timestamps]
     end
 
     subgraph "Infrastructure Layer"
-        UserRepo[User Repository]
-        GroupRepo[Group Repository]
-        MessageRepo[Message Repository]
-        Database[SQLite Database]
-        Validator[Input Validator]
+        USER_REPO[User Repository<br/>Data Access + Queries]
+        GROUP_REPO[Group Repository<br/>CRUD Operations]
+        MSG_REPO[Message Repository<br/>Pagination + Filtering]
+        DB_CONN[Database Connection<br/>PDO + Singleton Pattern]
     end
 
-    Client --> Routes
-    Routes --> Middleware
-    Middleware --> UserService
-    Middleware --> GroupService
-    Middleware --> MessageService
+    subgraph "Database Layer"
+        SQLITE[(SQLite Database<br/>users + groups + messages<br/>Foreign Key Constraints)]
+    end
 
-    UserService --> UserEntity
-    GroupService --> GroupEntity
-    MessageService --> MessageEntity
+    subgraph "Framework & Security"
+        SLIM[Slim Framework 4<br/>Routing + Middleware]
+        PHPUNIT[PHPUnit Testing<br/>Unit + Integration Tests]
+        COMPOSER[Composer<br/>Dependency Management]
+    end
 
-    UserService --> UserRepo
-    GroupService --> GroupRepo
-    MessageService --> MessageRepo
+    CURL --> ROUTES
+    WEB --> ROUTES
+    MOBILE --> ROUTES
 
-    UserRepo --> Database
-    GroupRepo --> Database
-    MessageRepo --> Database
+    ROUTES --> MIDDLEWARE
+    MIDDLEWARE --> VALIDATOR
+    VALIDATOR --> USER_SVC
+    VALIDATOR --> GROUP_SVC
+    VALIDATOR --> MSG_SVC
 
-    Routes --> Validator
-    Validator --> UserService
-    Validator --> GroupService
-    Validator --> MessageService
+    USER_SVC --> USER_ENT
+    GROUP_SVC --> GROUP_ENT
+    MSG_SVC --> MSG_ENT
+
+    USER_SVC --> USER_REPO
+    GROUP_SVC --> GROUP_REPO
+    MSG_SVC --> MSG_REPO
+
+    USER_REPO --> DB_CONN
+    GROUP_REPO --> DB_CONN
+    MSG_REPO --> DB_CONN
+
+    DB_CONN --> SQLITE
+
+    ROUTES --> SLIM
+    MIDDLEWARE --> SLIM
+    USER_SVC --> PHPUNIT
+    GROUP_SVC --> PHPUNIT
+    MSG_SVC --> PHPUNIT
+    SLIM --> COMPOSER
 ```
 
 ### Request Flow Architecture
