@@ -23,6 +23,296 @@ This implementation satisfies all assessment requirements:
 
 The application follows Clean Architecture principles with clear separation of concerns across multiple layers:
 
+## System Architecture
+
+### High-Level Architecture Diagram
+
+```mermaid
+graph TB
+    Client[Client Applications]
+
+    subgraph "Presentation Layer"
+        Routes[Route Handlers]
+        Middleware[HTTP Middleware]
+    end
+
+    subgraph "Application Layer"
+        UserService[User Service]
+        GroupService[Group Service]
+        MessageService[Message Service]
+    end
+
+    subgraph "Domain Layer"
+        UserEntity[User Entity]
+        GroupEntity[Group Entity]
+        MessageEntity[Message Entity]
+    end
+
+    subgraph "Infrastructure Layer"
+        UserRepo[User Repository]
+        GroupRepo[Group Repository]
+        MessageRepo[Message Repository]
+        Database[SQLite Database]
+        Validator[Input Validator]
+    end
+
+    Client --> Routes
+    Routes --> Middleware
+    Middleware --> UserService
+    Middleware --> GroupService
+    Middleware --> MessageService
+
+    UserService --> UserEntity
+    GroupService --> GroupEntity
+    MessageService --> MessageEntity
+
+    UserService --> UserRepo
+    GroupService --> GroupRepo
+    MessageService --> MessageRepo
+
+    UserRepo --> Database
+    GroupRepo --> Database
+    MessageRepo --> Database
+
+    Routes --> Validator
+    Validator --> UserService
+    Validator --> GroupService
+    Validator --> MessageService
+```
+
+### Request Flow Architecture
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Routes
+    participant Middleware
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Routes: HTTP Request
+    Routes->>Middleware: Process Request
+    Middleware->>Middleware: CORS Headers
+    Middleware->>Middleware: JSON Validation
+    Middleware->>Routes: Validated Request
+    Routes->>Service: Business Logic Call
+    Service->>Repository: Data Operation
+    Repository->>Database: SQL Query
+    Database-->>Repository: Result Set
+    Repository-->>Service: Domain Objects
+    Service-->>Routes: Response Data
+    Routes-->>Middleware: HTTP Response
+    Middleware-->>Client: JSON Response
+```
+
+### Data Flow Architecture
+
+```mermaid
+graph LR
+    subgraph "Input Processing"
+        A[Raw HTTP Request] --> B[Middleware Validation]
+        B --> C[Input Sanitization]
+        C --> D[Authentication Check]
+    end
+
+    subgraph "Business Logic"
+        D --> E[Service Layer]
+        E --> F[Domain Validation]
+        F --> G[Business Rules]
+    end
+
+    subgraph "Data Persistence"
+        G --> H[Repository Layer]
+        H --> I[SQL Generation]
+        I --> J[Database Operation]
+        J --> K[Result Processing]
+    end
+
+    subgraph "Response Generation"
+        K --> L[Entity Mapping]
+        L --> M[JSON Serialization]
+        M --> N[HTTP Response]
+    end
+```
+
+## Code Flow Architecture
+
+### Request Processing Flow
+
+```
+📥 HTTP Request: POST /api/v1/groups/{id}/messages
+│
+├── 🌐 public/index.php
+│   ├── App\Application\App::create()
+│   └── $app->run()
+│
+├── 🔗 Slim Framework Routing
+│   ├── CorsMiddleware::process()
+│   │   └── src/Infrastructure/Middleware/CorsMiddleware.php
+│   ├── JsonMiddleware::process()
+│   │   └── src/Infrastructure/Middleware/JsonMiddleware.php
+│   └── BodyParsingMiddleware::process()
+│
+├── 🎯 Route Handler
+│   └── src/Presentation/Routes/MessageRoutes.php
+│       └── sendMessage($request, $response, $args)
+│           ├── $this->validator->validateMessageContent()
+│           ├── $this->messageService->sendMessage()
+│           └── return $response->withJson()
+│
+├── 🔧 Business Logic Layer
+│   └── src/Application/Service/MessageService.php
+│       └── sendMessage($groupId, $userId, $content)
+│           ├── $this->groupRepository->findById()
+│           ├── $this->groupRepository->isUserMember()
+│           ├── new Message($id, $groupId, $userId, $content)
+│           └── $this->messageRepository->save()
+│
+├── 📊 Data Access Layer
+│   └── src/Infrastructure/Repository/MessageRepository.php
+│       └── save(Message $message)
+│           ├── $this->db->prepare()
+│           ├── $stmt->bindValue()
+│           └── $stmt->execute()
+│
+└── 💾 Database Layer
+    └── src/Infrastructure/Database/DatabaseConnection.php
+        └── SQLite: INSERT INTO messages...
+```
+
+### Authentication Flow
+
+```
+🔐 Authentication Request: Bearer Token
+│
+├── 🎯 Route Handler (any protected endpoint)
+│   └── src/Presentation/Routes/*.php
+│       └── $token = $this->extractBearerToken($request)
+│
+├── 🔧 Service Layer
+│   └── src/Application/Service/UserService.php
+│       └── authenticateByToken($token)
+│           └── $this->userRepository->findByToken($token)
+│
+├── 📊 Repository Layer
+│   └── src/Infrastructure/Repository/UserRepository.php
+│       └── findByToken($token)
+│           ├── SELECT * FROM users WHERE token = ?
+│           └── return new User() or null
+│
+└── ✅ Authentication Result
+    ├── Success: Continue to business logic
+    └── Failure: Return 401 Unauthorized
+```
+
+### Data Validation Flow
+
+```
+✔️ Input Validation Pipeline
+│
+├── 🎯 Route Handler
+│   └── src/Presentation/Routes/*.php
+│       └── $this->validator->validate*()
+│
+├── 🛡️ Validation Layer
+│   └── src/Infrastructure/Validation/Validator.php
+│       ├── validateUsername($username)
+│       │   ├── Check length (3-50 chars)
+│       │   ├── Check pattern (alphanumeric + _.-)
+│       │   └── htmlspecialchars() for XSS protection
+│       ├── validateGroupName($name)
+│       │   ├── Check length (3-100 chars)
+│       │   └── Trim and sanitize
+│       └── validateMessageContent($content)
+│           ├── Check length (max 2000 chars)
+│           └── htmlspecialchars() for XSS protection
+│
+└── ✅ Validation Result
+    ├── Success: Continue processing
+    └── Failure: Return 400 Bad Request
+```
+
+### Database Connection Flow
+
+```
+🏗️ Database Architecture
+│
+├── 📁 src/Infrastructure/Database/DatabaseConnection.php
+│   ├── getInstance() - Singleton Pattern
+│   ├── connect() - PDO SQLite Connection
+│   ├── createTables() - Schema Creation
+│   └── getConnection() - Returns PDO Instance
+│
+├── 📋 Schema Creation Order:
+│   ├── 1️⃣ CREATE TABLE users
+│   ├── 2️⃣ CREATE TABLE groups
+│   ├── 3️⃣ CREATE TABLE group_members
+│   └── 4️⃣ CREATE TABLE messages
+│
+└── 🔗 Foreign Key Relationships:
+    ├── groups.created_by → users.id
+    ├── group_members.group_id → groups.id
+    ├── group_members.user_id → users.id
+    ├── messages.group_id → groups.id
+    └── messages.user_id → users.id
+```
+
+### Error Handling Flow
+
+```
+⚠️ Error Processing Pipeline
+│
+├── 🎯 Route Handler Level
+│   └── try/catch blocks in Routes/*.php
+│       ├── Validation errors → 400 Bad Request
+│       ├── Authentication errors → 401 Unauthorized
+│       └── Business logic errors → 404 Not Found
+│
+├── 🔧 Service Layer Level
+│   └── Business rule violations in Service/*.php
+│       ├── User not found → UserNotFoundException
+│       ├── Group not found → GroupNotFoundException
+│       └── Permission denied → UnauthorizedException
+│
+├── 📊 Repository Layer Level
+│   └── Database errors in Repository/*.php
+│       ├── PDO exceptions → DatabaseException
+│       ├── Constraint violations → IntegrityException
+│       └── Connection errors → ConnectionException
+│
+└── 🌐 Framework Level
+    └── Slim Framework Error Middleware
+        ├── HTTP exceptions → JSON error response
+        ├── Unhandled exceptions → 500 Internal Server Error
+        └── src/Application/App.php::configureErrorHandling()
+```
+
+### Testing Architecture Flow
+
+```
+🧪 Testing Strategy
+│
+├── 🔧 Unit Tests (tests/Unit/)
+│   └── UserServiceTest.php
+│       ├── Mock UserRepository
+│       ├── Test business logic in isolation
+│       └── Assert expected outcomes
+│
+├── 🌐 Integration Tests (tests/Integration/)
+│   └── ApiTest.php
+│       ├── Real HTTP requests to endpoints
+│       ├── Test complete workflow end-to-end
+│       ├── Database operations with test data
+│       └── Assert JSON responses
+│
+└── 🏗️ Test Infrastructure
+    ├── PHPUnit configuration (phpunit.xml)
+    ├── Test database isolation
+    ├── Setup/teardown methods
+    └── Mock object creation
+```
+
 ### Architectural Layers
 
 #### 1. Presentation Layer (`src/Presentation/`)
