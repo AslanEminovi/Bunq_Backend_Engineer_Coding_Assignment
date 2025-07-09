@@ -25,107 +25,33 @@ The application follows Clean Architecture principles with clear separation of c
 
 ## System Architecture
 
-### High-Level Architecture Diagram
-
 ```mermaid
 graph TB
-    subgraph "Client Layer"
-        CURL[cURL / Postman<br/>API Testing Tools]
-        WEB[Web Applications<br/>Frontend Clients]
-        MOBILE[Mobile Apps<br/>React Native / Flutter]
+    subgraph "Clients"
+        WEB[Web Apps]
+        API[API Tools]
     end
 
-    subgraph "Presentation Layer"
-        ROUTES[Route Handlers<br/>UserRoutes + GroupRoutes + MessageRoutes]
-        MIDDLEWARE[HTTP Middleware<br/>CORS + JSON + Authentication]
-        VALIDATOR[Input Validator<br/>XSS Protection + Sanitization]
+    subgraph "API Layer"
+        ROUTES[Route Handlers]
+        MIDDLEWARE[Middleware]
     end
 
-    subgraph "Application Layer"
-        USER_SVC[User Service<br/>Authentication + User Management]
-        GROUP_SVC[Group Service<br/>Group Creation + Membership]
-        MSG_SVC[Message Service<br/>Messaging + Validation]
+    subgraph "Business Logic"
+        SERVICES[Services]
     end
 
-    subgraph "Domain Layer"
-        USER_ENT[User Entity<br/>ID + Username + Token]
-        GROUP_ENT[Group Entity<br/>ID + Name + Description]
-        MSG_ENT[Message Entity<br/>ID + Content + Timestamps]
+    subgraph "Data Layer"
+        REPOS[Repositories]
+        DB[(SQLite Database)]
     end
 
-    subgraph "Infrastructure Layer"
-        USER_REPO[User Repository<br/>Data Access + Queries]
-        GROUP_REPO[Group Repository<br/>CRUD Operations]
-        MSG_REPO[Message Repository<br/>Pagination + Filtering]
-        DB_CONN[Database Connection<br/>PDO + Singleton Pattern]
-    end
-
-    subgraph "Database Layer"
-        SQLITE[(SQLite Database<br/>users + groups + messages<br/>Foreign Key Constraints)]
-    end
-
-    subgraph "Framework & Security"
-        SLIM[Slim Framework 4<br/>Routing + Middleware]
-        PHPUNIT[PHPUnit Testing<br/>Unit + Integration Tests]
-        COMPOSER[Composer<br/>Dependency Management]
-    end
-
-    CURL --> ROUTES
     WEB --> ROUTES
-    MOBILE --> ROUTES
-
+    API --> ROUTES
     ROUTES --> MIDDLEWARE
-    MIDDLEWARE --> VALIDATOR
-    VALIDATOR --> USER_SVC
-    VALIDATOR --> GROUP_SVC
-    VALIDATOR --> MSG_SVC
-
-    USER_SVC --> USER_ENT
-    GROUP_SVC --> GROUP_ENT
-    MSG_SVC --> MSG_ENT
-
-    USER_SVC --> USER_REPO
-    GROUP_SVC --> GROUP_REPO
-    MSG_SVC --> MSG_REPO
-
-    USER_REPO --> DB_CONN
-    GROUP_REPO --> DB_CONN
-    MSG_REPO --> DB_CONN
-
-    DB_CONN --> SQLITE
-
-    ROUTES --> SLIM
-    MIDDLEWARE --> SLIM
-    USER_SVC --> PHPUNIT
-    GROUP_SVC --> PHPUNIT
-    MSG_SVC --> PHPUNIT
-    SLIM --> COMPOSER
-```
-
-### Request Flow Architecture
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Routes
-    participant Middleware
-    participant Service
-    participant Repository
-    participant Database
-
-    Client->>Routes: HTTP Request
-    Routes->>Middleware: Process Request
-    Middleware->>Middleware: CORS Headers
-    Middleware->>Middleware: JSON Validation
-    Middleware->>Routes: Validated Request
-    Routes->>Service: Business Logic Call
-    Service->>Repository: Data Operation
-    Repository->>Database: SQL Query
-    Database-->>Repository: Result Set
-    Repository-->>Service: Domain Objects
-    Service-->>Routes: Response Data
-    Routes-->>Middleware: HTTP Response
-    Middleware-->>Client: JSON Response
+    MIDDLEWARE --> SERVICES
+    SERVICES --> REPOS
+    REPOS --> DB
 ```
 
 ### Architectural Layers
