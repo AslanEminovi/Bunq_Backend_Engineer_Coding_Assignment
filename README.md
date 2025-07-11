@@ -1,5 +1,8 @@
 # Chat Application Backend - Technical Assessment
 
+<img width="718" height="806" alt="image" src="https://github.com/user-attachments/assets/901e9c9e-a0ab-4894-8370-2eb715be29df" />
+
+
 This is a comprehensive chat application backend implementation built for the Backend Engineering assessment. The application demonstrates modern PHP development practices, clean architecture principles, and secure coding standards.
 
 ## Overview
